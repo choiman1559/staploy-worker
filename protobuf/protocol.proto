@@ -1,0 +1,73 @@
+syntax = "proto3";
+package com.staploy;
+import "app.proto";
+
+enum ProtocolProcedure {
+  PROCEDURE_SERVER_HELLO = 0;
+  PROCEDURE_REQUEST_TASK = 1;
+  PROCEDURE_CHECK_TASK = 2;
+  PROCEDURE_CANCEL_TASK = 3;
+}
+
+enum ActionProcedure {
+  PROCEDURE_NONE = 0;
+  PROCEDURE_ACK = 1;
+  PROCEDURE_REQUEST_WORKER_INFO = 2;
+  PROCEDURE_REQUEST_APP_INFO = 3;
+
+  PROCEDURE_PUSH_APP_BINARY = 10; // Reserved, But no used by protobuf parser (Via http file request header)
+  PROCEDURE_ADD_APP_VERSION = 11;
+  PROCEDURE_SET_APP_VERSION = 12;
+  PROCEDURE_DELETE_APP_VERSION = 13;
+  PROCEDURE_EXECUTE_SHELL = 14;
+}
+
+enum CpuArch {
+  UNKNOWN = 0;
+  i386 = 1;
+  x86_64 = 2;
+  arm = 3;
+  aarch64 = 4;
+  riscv32 = 5;
+  riscv64 = 6;
+  mipsel = 7;
+  mips64el = 8;
+}
+
+message Packet {
+  ProtocolProcedure procedure = 1;
+  string challengeCode = 2;
+  optional ActionProcedure actionProcedure = 3;
+  optional bytes extraData = 4;
+}
+
+message ServerPacket {
+  Packet packetInfo = 1;
+  repeated AppInfoFetch appInfoFetch = 2;
+}
+
+message WorkerPacket {
+  Packet packetInfo = 1;
+  optional Result taskResult = 2;
+  optional WorkerInfo workerInfo = 3;
+}
+
+message WorkerInfo {
+  string workerId = 1;
+  string workerName = 2;
+
+  optional CpuArch cpuArch = 3;
+  optional string binLocation = 4;
+  optional sint64 cpuCoreCount = 5;
+  optional sint64 memoryInBytes = 6;
+
+  repeated InstalledAppInfo installedApp = 7;
+}
+
+message Result {
+  bool taskStarted = 1;
+  bool resultFinished = 2;
+  bool resultSuccessful = 3;
+  optional int32 errorCode = 4;
+  optional string errorMessage = 5;
+}
