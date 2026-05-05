@@ -31,6 +31,15 @@ func WriteFileString(path string, content string) error {
 	return os.WriteFile(path, []byte(content), 0666)
 }
 
+func MkdirAll(path string) error {
+	return os.MkdirAll(path, 0755)
+}
+
+func RmdirAll(path string) error {
+	err := os.RemoveAll(path)
+	return err
+}
+
 func SetExecutable(path string, executable bool) error {
 	perm := 0666
 	if executable {

@@ -1,7 +1,7 @@
 package process
 
 import (
-	"fmt"
+	"log"
 	"staploy-worker/app/proto"
 	"staploy-worker/app/service"
 
@@ -13,14 +13,20 @@ func PacketProcess(session *service.Session, data []byte) {
 	packet := &proto.ServerPacket{}
 
 	if err := protobuf.Unmarshal(data, packet); err != nil {
-		fmt.Println("Error while decoding => proto.Unmarshal:", err)
+		log.Print("Error while decoding => proto.Unmarshal:", err)
 		return
 	}
 	routePacket(session, packet)
 }
 
 func routePacket(session *service.Session, packet *proto.ServerPacket) {
-	switch packet.GetPacketInfo().GetProcedure() {
+	procedure := packet.GetPacketInfo().GetProcedure()
+	if !session.IsConnected() && procedure != proto.ProtocolProcedure_PROCEDURE_SERVER_HELLO {
+		log.Printf("Session cannot proceed without established server handshaking: %v", procedure)
+		return
+	}
+
+	switch procedure {
 	case proto.ProtocolProcedure_PROCEDURE_SERVER_HELLO:
 		replyWorkerData(session, packet)
 
@@ -34,7 +40,7 @@ func routePacket(session *service.Session, packet *proto.ServerPacket) {
 		// TODO: implements cancel task logics
 
 	default:
-		fmt.Println("Unknown Procedure: ", packet.GetPacketInfo().GetProcedure())
+		log.Printf("Unknown Procedure: %s", procedure)
 		return
 	}
 }
@@ -63,13 +69,13 @@ func replyWorkerData(session *service.Session, packet *proto.ServerPacket) {
 
 	switch packet.GetPacketInfo().GetActionProcedure() {
 	case proto.ActionProcedure_PROCEDURE_NONE:
-		fmt.Println("Connected to server, responding WorkerInfo...")
+		log.Printf("Connected to server, responding WorkerInfo...")
 		requireDetailInfo = false
 		session.RegisterServerId(packet.GetPacketInfo().GetExtraData())
 	case proto.ActionProcedure_PROCEDURE_REQUEST_WORKER_INFO:
 		requireDetailInfo = true
 	case proto.ActionProcedure_PROCEDURE_ACK:
-		fmt.Println("Server handshake done!")
+		log.Printf("Server handshake done!")
 		return
 	}
 
@@ -88,16 +94,16 @@ func replyWorkerData(session *service.Session, packet *proto.ServerPacket) {
 func sendMessage(session *service.Session, workerPacket *proto.WorkerPacket) {
 	data, err := protobuf.Marshal(workerPacket)
 	if err != nil {
-		fmt.Println("Error while marshal responsePacket:", err)
+		log.Printf("Error while marshal responsePacket: %s", err)
 		return
 	}
 
 	json, _ := protojson.Marshal(workerPacket)
-	fmt.Println("Sending message: ", string(json))
+	log.Printf("Sending message: %s", string(json))
 
 	err = session.SendMessage(data)
 	if err != nil {
-		fmt.Println("Error while sending responsePacket:", err)
+		log.Printf("Error while sending responsePacket: %s", err)
 		return
 	}
 }

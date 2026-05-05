@@ -40,8 +40,7 @@ func InitSession(a *Config, eventListener EventListener) {
 
 	c, _, err := websocket.Dial(ctx, addr, nil)
 	if err != nil {
-		log.Printf("Failed to connect to server: %s\n", addr)
-		panic(err)
+		log.Fatalf("Failed to connect to server: %s\n", addr)
 	}
 
 	WebSocketSession = Session{
@@ -52,14 +51,13 @@ func InitSession(a *Config, eventListener EventListener) {
 
 	err = readLoop(&WebSocketSession)
 	if err != nil {
-		log.Printf("Failed to read data: %s\n", err)
+		log.Fatalf("Failed to read data: %s\n", err)
 	}
 
 	defer func(s *Session) {
 		err := s.CloseNow()
 		if err != nil {
-			log.Printf("Failed to close connection: %s\n", err)
-			panic(err)
+			log.Fatalf("Failed to close connection: %s\n", err)
 		}
 	}(&WebSocketSession)
 }
@@ -68,8 +66,11 @@ func readLoop(s *Session) error {
 	for {
 		_, data, err := s.conn.Read(s.context)
 		if err != nil {
-			if websocket.CloseStatus(err) == websocket.StatusNormalClosure {
-				fmt.Println("Connection closed")
+			s.serverId = ""
+			closureReason := websocket.CloseStatus(err)
+
+			if closureReason == websocket.StatusNormalClosure {
+				log.Print("Connection closed")
 				return nil
 			}
 			return err

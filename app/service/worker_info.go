@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"log"
 	"path/filepath"
 	"runtime"
 	"staploy-worker/app/consts"
@@ -9,6 +10,7 @@ import (
 	"staploy-worker/app/proto"
 	"sync/atomic"
 
+	"github.com/gofrs/flock"
 	"github.com/google/uuid"
 	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/mem"
@@ -16,9 +18,10 @@ import (
 
 var atomicWorkerDefaultInfo atomic.Value
 var atomicWorkerUniqueId atomic.Value
+var uuidLock *flock.Flock
 
 func CreateDefaultWorkerInfo(requireDetail bool) *proto.WorkerInfo {
-	workerInfo := atomicWorkerDefaultInfo.Load().(*proto.WorkerInfo)
+	workerInfo := atomicWorkerDefaultInfo.Load()
 	if workerInfo == nil {
 		info, _ := host.Info()
 		workerInfo = &proto.WorkerInfo{
@@ -33,30 +36,46 @@ func CreateDefaultWorkerInfo(requireDetail bool) *proto.WorkerInfo {
 	}
 
 	if requireDetail {
-		workerInfo.BinLocation = &ArgsConfig.BaseDir
-		workerInfo.CpuArch = new(GetWorkerCpuArch())
-		workerInfo.CpuCoreCount = new(GetCpuCoreCount())
-		workerInfo.MemoryInBytes = new(GetTotalMemorySizeInBytes())
+		workerInfo.(*proto.WorkerInfo).BinLocation = &ArgsConfig.BaseDir
+		workerInfo.(*proto.WorkerInfo).CpuArch = new(GetWorkerCpuArch())
+		workerInfo.(*proto.WorkerInfo).CpuCoreCount = new(GetCpuCoreCount())
+		workerInfo.(*proto.WorkerInfo).MemoryInBytes = new(GetTotalMemorySizeInBytes())
 	}
 
-	return workerInfo
+	return workerInfo.(*proto.WorkerInfo)
+}
+
+func getUUIDFilePath() (string, error) {
+	fil, err := files.GetBaseDir()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	absPath, _ := filepath.Abs(fil.Name())
+	configPath := fmt.Sprintf("%s/%s", absPath, consts.FILENAME_BASE_UUID)
+	return configPath, err
+}
+
+func GetWorkerUUIDLock() *flock.Flock {
+	if uuidLock == nil {
+		configPath, err := getUUIDFilePath()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		uuidLock = flock.New(configPath)
+	}
+	return uuidLock
 }
 
 func GetWorkerUniqueId() string {
 	currentId := atomicWorkerUniqueId.Load()
 	if currentId == nil || currentId == "" {
-		fil, err := files.GetBaseDir()
-		if err != nil {
-			panic(err)
-		}
-
-		absPath, _ := filepath.Abs(fil.Name())
-		configPath := fmt.Sprintf("%s/%s", absPath, consts.FILE_BASE_UUID)
-
+		configPath, err := getUUIDFilePath()
 		if files.Exists(configPath) {
 			content, err := files.ReadFileString(configPath)
 			if err != nil {
-				panic(err)
+				log.Fatal(err)
 			} else if content != "" {
 				atomicWorkerUniqueId.Store(content)
 				return content
@@ -68,7 +87,7 @@ func GetWorkerUniqueId() string {
 		err = files.WriteFileString(configPath, newId)
 
 		if err != nil {
-			panic(err)
+			log.Fatal(err)
 		}
 		return newId
 	}

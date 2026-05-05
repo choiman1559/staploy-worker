@@ -5,6 +5,7 @@ go 1.26
 require (
 	github.com/alexflint/go-arg v1.6.1
 	github.com/coder/websocket v1.8.14
+	github.com/gofrs/flock v0.13.0
 	github.com/google/uuid v1.6.0
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	google.golang.org/protobuf v1.36.11
