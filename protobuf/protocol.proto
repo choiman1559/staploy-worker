@@ -62,12 +62,17 @@ message WorkerInfo {
   optional sint64 memoryInBytes = 6;
 
   repeated InstalledAppInfo installedApp = 7;
+  optional WorkerFlags workerFlags = 8;
+}
+
+message WorkerFlags {
+  int64 BUFFER_SIZE = 1;
+  bool USE_REMOTE_SHELL = 2;
 }
 
 message Result {
   bool taskStarted = 1;
   bool resultFinished = 2;
   bool resultSuccessful = 3;
-  optional int32 errorCode = 4;
-  optional string errorMessage = 5;
+  optional string errorMessage = 4;
 }

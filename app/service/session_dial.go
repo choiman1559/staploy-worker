@@ -3,19 +3,28 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
+	"staploy-worker/app/consts"
 	"time"
-
-	"staploy-worker/consts"
 
 	"github.com/coder/websocket"
 )
 
+const VERSION = "0.1.0"
+
 type Config struct {
 	Address    string `arg:"-a,required" help:"server address"`
 	Port       int    `arg:"-p,required" help:"server port"`
-	BinDir     string `arg:"--bin-dir,required" help:"path to binary directory"`
-	ProfileDir string `arg:"--profile-dir" help:"path to profile directory"`
-	CacheDir   string `arg:"--cache-dir" help:"path to cache directory"`
+	BaseDir    string `arg:"-d,--base-dir,required" help:"path to base binary directory"`
+	ProfileDir string `arg:"--profile-dir" help:"overrides path to profile directory"`
+	CacheDir   string `arg:"--cache-dir" help:"overrides path to cache directory"`
+
+	BufferSize  int64 `arg:"--buffer-size" default:"65535" help:"overrides buffer size in bytes"`
+	RemoteShell bool  `arg:"--remote-shell" help:"(Experimental) use remote shell"`
+}
+
+func (c *Config) Version() string {
+	return fmt.Sprintf("staploy-worker %s (%s)", VERSION, GetWorkerCpuArch().String())
 }
 
 var WebSocketSession Session
@@ -31,7 +40,7 @@ func InitSession(a *Config, eventListener EventListener) {
 
 	c, _, err := websocket.Dial(ctx, addr, nil)
 	if err != nil {
-		fmt.Printf("Failed to connect to server: %s\n", addr)
+		log.Printf("Failed to connect to server: %s\n", addr)
 		panic(err)
 	}
 
@@ -43,13 +52,13 @@ func InitSession(a *Config, eventListener EventListener) {
 
 	err = readLoop(&WebSocketSession)
 	if err != nil {
-		fmt.Printf("Failed to read data: %s\n", err)
+		log.Printf("Failed to read data: %s\n", err)
 	}
 
 	defer func(s *Session) {
 		err := s.CloseNow()
 		if err != nil {
-			fmt.Printf("Failed to close connection: %s\n", err)
+			log.Printf("Failed to close connection: %s\n", err)
 			panic(err)
 		}
 	}(&WebSocketSession)
@@ -66,7 +75,7 @@ func readLoop(s *Session) error {
 			return err
 		}
 
-		fmt.Printf("Received raw message: %s\n", data)
+		log.Printf("Received raw message: %s\n", data)
 		s.listener.OnIncomingData(s, data)
 	}
 }

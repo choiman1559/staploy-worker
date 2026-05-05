@@ -1,6 +1,6 @@
 MODULE := $(shell grep ^module go.mod | awk '{print $$2}')
 SRC_DIR := protobuf
-OUT_DIR := proto
+OUT_DIR := app/proto
 
 GOPATH_DEFAULT := $(shell go env GOPATH)
 ifeq ($(GOPATH_DEFAULT),)

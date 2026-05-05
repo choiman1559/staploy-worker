@@ -2,8 +2,8 @@ package process
 
 import (
 	"fmt"
-	"staploy-worker/proto"
-	"staploy-worker/service"
+	"staploy-worker/app/proto"
+	"staploy-worker/app/service"
 
 	"google.golang.org/protobuf/encoding/protojson"
 	protobuf "google.golang.org/protobuf/proto"
@@ -25,12 +25,37 @@ func routePacket(session *service.Session, packet *proto.ServerPacket) {
 		replyWorkerData(session, packet)
 
 	case proto.ProtocolProcedure_PROCEDURE_REQUEST_TASK:
+		processAppAction(session, packet)
+
 	case proto.ProtocolProcedure_PROCEDURE_CHECK_TASK:
+		replyCheckTask(session, packet)
+
 	case proto.ProtocolProcedure_PROCEDURE_CANCEL_TASK:
+		// TODO: implements cancel task logics
+
 	default:
 		fmt.Println("Unknown Procedure: ", packet.GetPacketInfo().GetProcedure())
 		return
 	}
+}
+
+func replyCheckTask(session *service.Session, packet *proto.ServerPacket) {
+	resultObj, ok := currentTaskMap.Get(packet.GetPacketInfo().GetChallengeCode())
+	workerPacket := proto.WorkerPacket{
+		PacketInfo: packet.GetPacketInfo(),
+	}
+
+	if ok {
+		workerPacket.TaskResult = resultObj
+	} else {
+		workerPacket.TaskResult = &proto.Result{
+			TaskStarted:      false,
+			ResultFinished:   false,
+			ResultSuccessful: false,
+		}
+	}
+
+	sendMessage(session, &workerPacket)
 }
 
 func replyWorkerData(session *service.Session, packet *proto.ServerPacket) {
@@ -57,13 +82,17 @@ func replyWorkerData(session *service.Session, packet *proto.ServerPacket) {
 		}),
 	}
 
-	data, err := protobuf.Marshal(&responsePacket)
+	sendMessage(session, &responsePacket)
+}
+
+func sendMessage(session *service.Session, workerPacket *proto.WorkerPacket) {
+	data, err := protobuf.Marshal(workerPacket)
 	if err != nil {
 		fmt.Println("Error while marshal responsePacket:", err)
 		return
 	}
 
-	json, _ := protojson.Marshal(&responsePacket)
+	json, _ := protojson.Marshal(workerPacket)
 	fmt.Println("Sending message: ", string(json))
 
 	err = session.SendMessage(data)
