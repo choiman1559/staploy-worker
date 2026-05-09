@@ -3,11 +3,9 @@ package com.staploy;
 
 message Version {
   string versionName = 1;
-  optional uint64 archiveSize = 2;
-  optional bytes archiveHash = 3;
-
-  repeated string entryBinaries = 4;
-  repeated bytes entryBinariesHash = 5;
+  repeated string entryBinaries = 2;
+  repeated bytes entryBinariesHash = 3;
+  optional string libcVersion = 4;
 }
 
 message AppInfo {

@@ -30,7 +30,7 @@ func StartApplication() {
 
 	if args.RemoteShell {
 		log.Printf("WARNING: Starting application with REMOTE_SHELL_EXECUTION.")
-		log.Printf("		Use this option with VERY caution.")
+		log.Printf("		 Use this option with VERY caution.")
 	}
 
 	fil, err := files.GetBaseDir()
