@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"staploy-worker/app/consts"
-	"time"
 
 	"github.com/coder/websocket"
 )
@@ -32,8 +31,7 @@ var ArgsConfig *Config
 
 func InitSession(a *Config, eventListener EventListener) {
 	ArgsConfig = a
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
+	ctx := context.Background()
 
 	var paths = fmt.Sprintf(consts.APIRouteSchema, "v1", consts.ConnTypeWorker)
 	var addr = fmt.Sprintf("ws://%s:%d%s", ArgsConfig.Address, ArgsConfig.Port, paths)

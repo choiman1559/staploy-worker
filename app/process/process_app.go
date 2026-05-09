@@ -7,7 +7,7 @@ import (
 	"staploy-worker/app/service"
 )
 
-var currentTaskMap = SafeMap{}
+var currentTaskMap = NewSafeMap()
 var executableTaskMap = map[proto.ActionProcedure]tasks.TaskInvoker{
 	proto.ActionProcedure_PROCEDURE_NONE:               &tasks.TaskNone{},
 	proto.ActionProcedure_PROCEDURE_REQUEST_APP_INFO:   &tasks.TaskAppInfo{},

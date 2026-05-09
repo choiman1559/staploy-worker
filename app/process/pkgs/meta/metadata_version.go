@@ -13,7 +13,7 @@ import (
 
 type VersionMetadata struct {
 	versionName string
-	Version     string
+	appName     string
 	Lock        sync.Mutex
 }
 
@@ -25,6 +25,7 @@ func GetVersionMeta(appName string, versionName string) *VersionMetadata {
 	if versionMeta == nil {
 		versionMeta = &VersionMetadata{
 			versionName: versionName,
+			appName:     appName,
 			Lock:        sync.Mutex{},
 		}
 		versionMap[mapKey] = versionMeta
@@ -51,7 +52,7 @@ func (version *VersionMetadata) GetVersionMetadataFile() (string, error) {
 		return "", err
 	}
 
-	path := filepath.Join(binAbs, version.versionName, consts.FILENAME_METADATA)
+	path := filepath.Join(binAbs, version.appName, version.versionName, consts.FILENAME_METADATA)
 	return path, nil
 }
 

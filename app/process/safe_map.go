@@ -10,6 +10,13 @@ type SafeMap struct {
 	m  map[string]*proto.Result
 }
 
+func NewSafeMap() *SafeMap {
+	safeMap := &SafeMap{}
+	safeMap.mu = sync.RWMutex{}
+	safeMap.m = make(map[string]*proto.Result)
+	return safeMap
+}
+
 func (sm *SafeMap) Set(key string, taskProgression *proto.Result) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()

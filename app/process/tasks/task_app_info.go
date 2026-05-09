@@ -1,6 +1,7 @@
 package tasks
 
 import (
+	"log"
 	"staploy-worker/app/process/pkgs/meta"
 	"staploy-worker/app/proto"
 )
@@ -12,6 +13,8 @@ type TaskAppInfo struct {
 func (t *TaskAppInfo) InvokeTask() (*proto.WorkerPacket, error) {
 	workerPacket := t.CreateDefaultMessage()
 	fetch := t.packet.GetAppInfoFetch()
+
+	log.Print(t.packet)
 
 	if len(fetch) <= 0 {
 		lists, err := meta.GetAllAppMeta()
