@@ -59,13 +59,13 @@ func (symlinks *Symlinks) ExportVersionLink() error {
 	}
 
 	for _, binary := range versionInfo.EntryBinaries {
-		originalBinPath := filepath.Join(binPath, binary)
+		originalBinPath := filepath.Join(binPath, binary.GetName())
 		err := files.SetExecutable(originalBinPath, true)
 		if err != nil {
 			return err
 		}
 
-		err = os.Symlink(originalBinPath, filepath.Join(exportPath, binary))
+		err = os.Symlink(originalBinPath, filepath.Join(exportPath, binary.GetName()))
 		if err != nil {
 			return err
 		}
@@ -113,7 +113,7 @@ func (symlinks *Symlinks) RemoveVersionLink() error {
 	}
 
 	for _, binary := range versionInfo.EntryBinaries {
-		linkPath := filepath.Join(exportPath, binary)
+		linkPath := filepath.Join(exportPath, binary.GetName())
 		fi, err := os.Lstat(linkPath)
 		if err == nil && fi.Mode()&os.ModeSymlink != 0 {
 			err := os.Remove(linkPath)

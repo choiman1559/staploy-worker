@@ -1,11 +1,15 @@
 syntax = "proto3";
 package com.staploy;
 
+message BinaryInfo {
+  string name = 1;
+  string hash = 2;
+}
+
 message Version {
   string versionName = 1;
-  repeated string entryBinaries = 2;
-  repeated bytes entryBinariesHash = 3;
-  optional string libcVersion = 4;
+  repeated BinaryInfo entryBinaries = 2;
+  optional string libVersion = 3;
 }
 
 message AppInfo {
