@@ -27,7 +27,5 @@ func (task *Task) CreateDefaultMessage() *proto.WorkerPacket {
 		PacketInfo: task.packet.GetPacketInfo(),
 		WorkerInfo: service.CreateDefaultWorkerInfo(false),
 	}
-
-	workerPacket.PacketInfo.ExtraData = []byte{}
 	return workerPacket
 }

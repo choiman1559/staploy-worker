@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/coder/websocket"
-	"github.com/google/uuid"
 )
 
 type EventListener interface {
@@ -40,9 +39,8 @@ func (session *Session) IsAlive() bool {
 	return false
 }
 
-func (session *Session) RegisterServerId(rawData []byte) {
-	var parsedUuid, _ = uuid.FromBytes(rawData)
-	session.serverId = parsedUuid.String()
+func (session *Session) RegisterServerId(uuid string) {
+	session.serverId = uuid
 }
 
 func (session *Session) IsConnected() bool {

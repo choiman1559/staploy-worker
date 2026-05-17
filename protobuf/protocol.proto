@@ -38,12 +38,13 @@ message Packet {
   ProtocolProcedure procedure = 1;
   string challengeCode = 2;
   optional ActionProcedure actionProcedure = 3;
-  optional bytes extraData = 4;
+  optional string extraData = 4;
 }
 
 message ServerPacket {
-  Packet packetInfo = 1;
-  repeated AppInfoFetch appInfoFetch = 2;
+  string serverUUID = 1;
+  Packet packetInfo = 2;
+  repeated AppInfoFetch appInfoFetch = 3;
 }
 
 message WorkerPacket {

@@ -3,6 +3,7 @@ package tasks
 import (
 	"errors"
 	"fmt"
+	"log"
 	"staploy-worker/app/process/pkgs/binary"
 	"staploy-worker/app/proto"
 )
@@ -25,6 +26,7 @@ func (t *TaskAppSet) InvokeTask() (*proto.WorkerPacket, error) {
 		}
 
 		if len(appFetch.GetAppVersion()) == 1 {
+			log.Printf("Processing triggers for package %s (%s)", appFetch.App.AppName, appFetch.AppVersion[0].VersionName)
 			symlinker := binary.CreateSymlinkOps(appFetch.App.AppName, appFetch.AppVersion[0].VersionName)
 			isSymlinked, err := symlinker.CheckIsCurrentVersionLink()
 			if err != nil {
@@ -38,13 +40,14 @@ func (t *TaskAppSet) InvokeTask() (*proto.WorkerPacket, error) {
 				}
 			}
 		} else if len(appFetch.GetAppVersion()) == 0 {
+			log.Printf("Processing unlinking for package %s", appFetch.App.AppName)
 			currentVersion, err := binary.CheckWhichVersionEnabled(appFetch.App.AppName)
 			if err != nil {
 				return nil, err
 			}
 
 			symlinker := binary.CreateSymlinkOps(appFetch.App.AppName, currentVersion.GetVersionName())
-			if currentVersion.GetVersionName() == "" {
+			if currentVersion.GetVersionName() != "" {
 				err := symlinker.RemoveVersionLink()
 				if err != nil {
 					return nil, err

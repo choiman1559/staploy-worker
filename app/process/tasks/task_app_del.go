@@ -3,6 +3,7 @@ package tasks
 import (
 	"errors"
 	"fmt"
+	"log"
 	"path/filepath"
 	"staploy-worker/app/files"
 	"staploy-worker/app/process/pkgs/binary"
@@ -26,8 +27,23 @@ func (t *TaskAppDelete) InvokeTask() (*proto.WorkerPacket, error) {
 			return nil, errors.New(fmt.Sprintf("app name \"%s\" not found", appFetch.App.AppName))
 		}
 
+		currentVersion, err := binary.CheckWhichVersionEnabled(appFetch.App.AppName)
+		if err != nil {
+			return nil, err
+		}
+
 		if len(appFetch.GetAppVersion()) > 0 {
 			for _, version := range appFetch.GetAppVersion() {
+				if currentVersion != nil && currentVersion.GetVersionName() == version.GetVersionName() {
+					log.Printf("Processing unlinking for package %s (%s)", appFetch.App.AppName, version.GetVersionName())
+					symlinker := binary.CreateSymlinkOps(appFetch.App.AppName, version.GetVersionName())
+					err := symlinker.RemoveVersionLink()
+					if err != nil {
+						return nil, err
+					}
+				}
+
+				log.Printf("Removing package %s (%s)", appFetch.App.AppName, version.VersionName)
 				appBinaryManager := binary.NewApp(appFetch.App.AppName, version.VersionName, "")
 				err := appBinaryManager.UninstallAppPack()
 				if err != nil {
@@ -35,6 +51,15 @@ func (t *TaskAppDelete) InvokeTask() (*proto.WorkerPacket, error) {
 				}
 			}
 		} else {
+			if currentVersion != nil {
+				symlinker := binary.CreateSymlinkOps(appFetch.App.AppName, currentVersion.GetVersionName())
+				err := symlinker.RemoveVersionLink()
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			log.Printf("Removing all versions of package %s", appFetch.App.AppName)
 			binDir, err := files.GetBinDir()
 			if err != nil {
 				return nil, err

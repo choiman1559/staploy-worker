@@ -39,7 +39,17 @@ func (app *AppPackageManager) InstallAppPack() error {
 			return err
 		}
 
-		appInfo.AvailableVersion = append(appInfo.AvailableVersion, newVersion)
+		needAppending := true
+		for _, version := range appInfo.AvailableVersion {
+			if newVersion.GetVersionName() == version.GetVersionName() {
+				needAppending = false
+			}
+		}
+
+		if needAppending {
+			appInfo.AvailableVersion = append(appInfo.AvailableVersion, newVersion)
+		}
+
 		err = app.AppMeta.CommitAppInfoFS(appInfo)
 		if err != nil {
 			return err

@@ -8,9 +8,56 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
-func DownloadFromUrl(url string, savePath string, headers map[string]string) error {
+func DownloadFileWithUrl(url string, filepath string, headers map[string]string) error {
+	out, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+
+	defer func(out *os.File) {
+		err := out.Close()
+		if err != nil {
+			return
+		}
+	}(out)
+
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+
+	resp, clientErr := client.Do(req)
+	if clientErr != nil {
+		return clientErr
+	}
+
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			return
+		}
+	}(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("bad status: %s", resp.Status)
+	}
+
+	_, err = io.Copy(out, resp.Body)
+	return err
+}
+
+func DownloadFileWithUrlMultipart(url string, savePath string, headers map[string]string) error {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {

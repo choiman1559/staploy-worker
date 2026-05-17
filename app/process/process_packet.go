@@ -71,7 +71,7 @@ func replyWorkerData(session *service.Session, packet *proto.ServerPacket) {
 	case proto.ActionProcedure_PROCEDURE_NONE:
 		log.Printf("Connected to server, responding WorkerInfo...")
 		requireDetailInfo = false
-		session.RegisterServerId(packet.GetPacketInfo().GetExtraData())
+		session.RegisterServerId(packet.GetServerUUID())
 	case proto.ActionProcedure_PROCEDURE_REQUEST_WORKER_INFO:
 		requireDetailInfo = true
 	case proto.ActionProcedure_PROCEDURE_ACK:
@@ -99,7 +99,9 @@ func sendMessage(session *service.Session, workerPacket *proto.WorkerPacket) {
 	}
 
 	json, _ := protojson.Marshal(workerPacket)
-	log.Printf("Sending message: %s", string(json))
+	if service.ArgsConfig.Verbose {
+		log.Printf("Sending message: %s", string(json))
+	}
 
 	err = session.SendMessage(data)
 	if err != nil {

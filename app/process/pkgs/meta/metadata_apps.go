@@ -93,7 +93,7 @@ func (app *AppMetadata) CommitAppInfoFS(info *proto.InstalledAppInfo) error {
 	info.AvailableVersion = availableVersions
 	bytes, err := protojson.Marshal(info)
 
-	err = files.MkdirAll(file)
+	err = files.MkdirAll(filepath.Dir(file))
 	if err != nil {
 		return err
 	}
@@ -107,7 +107,12 @@ func (app *AppMetadata) CommitAppInfoFS(info *proto.InstalledAppInfo) error {
 }
 
 func ClearVersion(version *proto.Version) *proto.Version {
+	var versionName = ""
+	if version != nil {
+		versionName = version.GetVersionName()
+	}
+
 	return &proto.Version{
-		VersionName: version.VersionName,
+		VersionName: versionName,
 	}
 }

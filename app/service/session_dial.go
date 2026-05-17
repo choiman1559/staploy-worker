@@ -20,6 +20,7 @@ type Config struct {
 
 	BufferSize  int64 `arg:"--buffer-size" default:"65535" help:"overrides buffer size in bytes"`
 	RemoteShell bool  `arg:"--remote-shell" help:"(Experimental) use remote shell"`
+	Verbose     bool  `arg:"--verbose" help:"verbose output"`
 }
 
 func (c *Config) Version() string {
@@ -74,7 +75,9 @@ func readLoop(s *Session) error {
 			return err
 		}
 
-		log.Printf("Received raw message: %s\n", data)
+		if ArgsConfig.Verbose {
+			log.Printf("Received raw message: %s\n", data)
+		}
 		s.listener.OnIncomingData(s, data)
 	}
 }

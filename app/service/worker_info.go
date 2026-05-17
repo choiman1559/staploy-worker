@@ -21,6 +21,12 @@ var atomicWorkerUniqueId atomic.Value
 var uuidLock *flock.Flock
 
 func CreateDefaultWorkerInfo(requireDetail bool) *proto.WorkerInfo {
+	if !requireDetail {
+		return &proto.WorkerInfo{
+			WorkerId: GetWorkerUniqueId(),
+		}
+	}
+
 	workerInfo := atomicWorkerDefaultInfo.Load()
 	if workerInfo == nil {
 		info, _ := host.Info()
@@ -35,12 +41,10 @@ func CreateDefaultWorkerInfo(requireDetail bool) *proto.WorkerInfo {
 		atomicWorkerDefaultInfo.Store(workerInfo)
 	}
 
-	if requireDetail {
-		workerInfo.(*proto.WorkerInfo).BinLocation = &ArgsConfig.BaseDir
-		workerInfo.(*proto.WorkerInfo).CpuArch = new(GetWorkerCpuArch())
-		workerInfo.(*proto.WorkerInfo).CpuCoreCount = new(GetCpuCoreCount())
-		workerInfo.(*proto.WorkerInfo).MemoryInBytes = new(GetTotalMemorySizeInBytes())
-	}
+	workerInfo.(*proto.WorkerInfo).BinLocation = &ArgsConfig.BaseDir
+	workerInfo.(*proto.WorkerInfo).CpuArch = new(GetWorkerCpuArch())
+	workerInfo.(*proto.WorkerInfo).CpuCoreCount = new(GetCpuCoreCount())
+	workerInfo.(*proto.WorkerInfo).MemoryInBytes = new(GetTotalMemorySizeInBytes())
 
 	return workerInfo.(*proto.WorkerInfo)
 }

@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"fmt"
+	"log"
 	"path/filepath"
 	"staploy-worker/app/consts"
 	"staploy-worker/app/files"
@@ -18,8 +19,9 @@ func (t *TaskAppAdd) InvokeTask() (*proto.WorkerPacket, error) {
 	workerPacket := t.CreateDefaultMessage()
 	fetch := t.packet.GetAppInfoFetch()[0]
 
-	var dwCode = string(t.packet.GetPacketInfo().ExtraData)
+	var dwCode = t.packet.GetPacketInfo().GetExtraData()
 	var saveName = fmt.Sprintf("%s_%s_%s.tar", fetch.App.AppName, fetch.AppVersion[0].VersionName, dwCode)
+	log.Printf("Downloading package %s (%s)", fetch.App.AppName, fetch.AppVersion[0].VersionName)
 
 	cacheDir, err := files.GetCacheDir()
 	if err != nil {
@@ -37,11 +39,12 @@ func (t *TaskAppAdd) InvokeTask() (*proto.WorkerPacket, error) {
 		consts.BLOB_REQ_TYPE_DOWNLOAD: dwCode,
 	}
 
-	err = files.DownloadFromUrl(addr, savePath, dwHeader)
+	err = files.DownloadFileWithUrl(addr, savePath, dwHeader)
 	if err != nil {
 		return nil, err
 	}
 
+	log.Printf("Unpacking package %s (%s)", fetch.App.AppName, fetch.AppVersion[0].VersionName)
 	appRegistration := binary.NewApp(fetch.App.AppName, fetch.AppVersion[0].VersionName, savePath)
 	err = appRegistration.InstallAppPack()
 	if err != nil {
