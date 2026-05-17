@@ -9,13 +9,14 @@ import (
 
 var currentTaskMap = NewSafeMap()
 var executableTaskMap = map[proto.ActionProcedure]tasks.TaskInvoker{
-	proto.ActionProcedure_PROCEDURE_NONE:               &tasks.TaskNone{},
-	proto.ActionProcedure_PROCEDURE_REQUEST_APP_INFO:   &tasks.TaskAppInfo{},
-	proto.ActionProcedure_PROCEDURE_PUSH_APP_BINARY:    &tasks.TaskNone{}, // Reserved, But no used by worker (Via http file request header)
-	proto.ActionProcedure_PROCEDURE_ADD_APP_VERSION:    &tasks.TaskAppAdd{},
-	proto.ActionProcedure_PROCEDURE_SET_APP_VERSION:    &tasks.TaskAppSet{},
-	proto.ActionProcedure_PROCEDURE_DELETE_APP_VERSION: &tasks.TaskAppDelete{},
-	proto.ActionProcedure_PROCEDURE_EXECUTE_SHELL:      &tasks.TaskShell{},
+	proto.ActionProcedure_PROCEDURE_NONE:                &tasks.TaskNone{},
+	proto.ActionProcedure_PROCEDURE_REQUEST_WORKER_INFO: &tasks.TaskNodeInfo{},
+	proto.ActionProcedure_PROCEDURE_REQUEST_APP_INFO:    &tasks.TaskAppInfo{},
+	proto.ActionProcedure_PROCEDURE_PUSH_APP_BINARY:     &tasks.TaskNone{}, // Reserved, But no used by worker (Via http file request header)
+	proto.ActionProcedure_PROCEDURE_ADD_APP_VERSION:     &tasks.TaskAppAdd{},
+	proto.ActionProcedure_PROCEDURE_SET_APP_VERSION:     &tasks.TaskAppSet{},
+	proto.ActionProcedure_PROCEDURE_DELETE_APP_VERSION:  &tasks.TaskAppDelete{},
+	proto.ActionProcedure_PROCEDURE_EXECUTE_SHELL:       &tasks.TaskShell{},
 }
 
 func processAppAction(session *service.Session, packet *proto.ServerPacket) {
