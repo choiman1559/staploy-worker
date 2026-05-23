@@ -1,6 +1,10 @@
 package binary
 
 import (
+	"crypto/sha1"
+	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 	"staploy-worker/app/files"
 	"staploy-worker/app/process/pkgs/meta"
@@ -104,6 +108,32 @@ func (app *AppPackageManager) UninstallAppPack() error {
 	return nil
 }
 
+func (app *AppPackageManager) VerifyAppPack() (bool, error) {
+	versionInfo, err := app.VersionMeta.FetchVersionInfoFS()
+	if err != nil {
+		return false, err
+	}
+
+	symlinkOps := CreateSymlinkOps(app.AppMeta.AppName, app.VersionMeta.VersionName)
+	versionDir, err := symlinkOps.GetAppBinaryPath(true)
+	if err != nil {
+		return false, err
+	}
+
+	for _, binary := range versionInfo.EntryBinaries {
+		binaryPath := filepath.Join(versionDir, binary.Name)
+		shaValue, err := getSHA1(binaryPath)
+		if err != nil {
+			return false, err
+		}
+
+		if binary.GetHash() == "" || binary.GetHash() != shaValue {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
 func (app *AppPackageManager) getAppPackPath() (string, error) {
 	binDir, err := files.GetBinDir()
 	if err != nil {
@@ -117,4 +147,24 @@ func (app *AppPackageManager) getAppPackPath() (string, error) {
 
 	path := filepath.Join(binAbs, app.AppMeta.AppName, app.VersionMeta.VersionName)
 	return path, nil
+}
+
+func getSHA1(filePath string) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			return
+		}
+	}(file)
+	hash := sha1.New()
+
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }

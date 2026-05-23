@@ -34,8 +34,10 @@ func CreateDefaultWorkerInfo(requireDetail bool) *proto.WorkerInfo {
 			WorkerId:   GetWorkerUniqueId(),
 			WorkerName: info.Hostname,
 			WorkerFlags: &proto.WorkerFlags{
-				BUFFER_SIZE:      ArgsConfig.BufferSize,
-				USE_REMOTE_SHELL: ArgsConfig.RemoteShell,
+				BUFFER_SIZE:            ArgsConfig.BufferSize,
+				USE_REMOTE_SHELL:       ArgsConfig.RemoteShell,
+				DISABLE_SYMLINK_DIR:    ArgsConfig.DisableSymlinkDir,
+				SKIP_HASH_VERIFICATION: ArgsConfig.SkipHashValidCheck,
 			},
 		}
 		atomicWorkerDefaultInfo.Store(workerInfo)

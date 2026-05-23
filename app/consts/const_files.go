@@ -6,3 +6,4 @@ const DIR_PREFIX_CACHE = "cache"
 
 const FILENAME_BASE_UUID = ".staploy_uuid"
 const FILENAME_METADATA = ".metadata"
+const FILENAME_SYMLINK_DIR = ".active"

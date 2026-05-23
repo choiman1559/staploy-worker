@@ -51,6 +51,22 @@ func (t *TaskAppAdd) InvokeTask() (*proto.WorkerPacket, error) {
 		return nil, err
 	}
 
+	if !service.ArgsConfig.SkipHashValidCheck {
+		log.Printf("Verifying integrity of package %s (%s)", fetch.App.AppName, fetch.AppVersion[0].VersionName)
+		result, err := appRegistration.VerifyAppPack()
+		if err != nil {
+			return nil, err
+		}
+
+		if !result {
+			log.Printf("Package %s (%s) integrity check failed! Rollback...", fetch.App.AppName, fetch.AppVersion[0].VersionName)
+			err := appRegistration.UninstallAppPack()
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	defer func(path string) {
 		err := files.RmdirAll(path)
 		if err != nil {
