@@ -22,15 +22,28 @@ func (t *TaskAppInfo) InvokeTask() (*proto.WorkerPacket, error) {
 	} else {
 		var lists []*proto.InstalledAppInfo
 		for _, appInfo := range fetch {
+			var versions []*proto.Version
 			if len(appInfo.GetAppVersion()) <= 0 {
 				appMeta := meta.GetAppMeta(appInfo.GetApp().AppName)
 				data, err := appMeta.FetchAppInfoFS()
+
+				if data != nil {
+					for _, baseVer := range data.AvailableVersion {
+						realVerMeta := meta.GetVersionMeta(appMeta.AppName, baseVer.GetVersionName())
+						realVerData, err := realVerMeta.FetchVersionInfoFS()
+						if err != nil {
+							return nil, err
+						}
+						versions = append(versions, realVerData)
+					}
+					data.AvailableVersion = versions
+				}
+
 				if err != nil {
 					return nil, err
 				}
 				lists = append(lists, data)
 			} else {
-				var versions []*proto.Version
 				for _, version := range appInfo.GetAppVersion() {
 					versionMeta := meta.GetVersionMeta(appInfo.App.AppName, version.VersionName)
 					data, err := versionMeta.FetchVersionInfoFS()
