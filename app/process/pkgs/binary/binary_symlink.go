@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"staploy-worker/app/consts"
 	"staploy-worker/app/files"
 	"staploy-worker/app/process/pkgs/meta"
@@ -31,20 +30,29 @@ func DualDifference(s []*proto.BinaryInfo, other []*proto.BinaryInfo) ([]*proto.
 	var bMinusA []*proto.BinaryInfo
 	var aAndB []*proto.BinaryInfo
 
+	checkContain := func(d []*proto.BinaryInfo, f *proto.BinaryInfo) bool {
+		for _, i := range d {
+			if i.Name == f.Name {
+				return true
+			}
+		}
+		return false
+	}
+
 	for _, data := range s {
-		if !slices.Contains(other, data) {
+		if !checkContain(other, data) {
 			aMinusB = append(aMinusB, data)
 		}
 	}
 
 	for _, data := range other {
-		if !slices.Contains(s, data) {
+		if !checkContain(s, data) {
 			bMinusA = append(bMinusA, data)
 		}
 	}
 
 	for _, data := range other {
-		if slices.Contains(s, data) {
+		if checkContain(s, data) {
 			aAndB = append(aAndB, data)
 		}
 	}
@@ -68,15 +76,23 @@ func CreateLinks(binaries []*proto.BinaryInfo, binPath string, exportPath string
 	return nil
 }
 
+func RemoveLink(linkPath string) error {
+	fi, err := os.Lstat(linkPath)
+	if err == nil && fi.Mode()&os.ModeSymlink != 0 {
+		err := os.Remove(linkPath)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func RemoveLinks(binaries []*proto.BinaryInfo, exportPath string) error {
 	for _, binary := range binaries {
 		linkPath := filepath.Join(exportPath, binary.GetName())
-		fi, err := os.Lstat(linkPath)
-		if err == nil && fi.Mode()&os.ModeSymlink != 0 {
-			err := os.Remove(linkPath)
-			if err != nil {
-				return err
-			}
+		err := os.Remove(linkPath)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -150,12 +166,9 @@ func (symlinks *Symlinks) ExportVersionLink() error {
 		return err
 	}
 
-	fi, err := os.Lstat(appSymlinkDir)
-	if err == nil && fi.Mode()&os.ModeSymlink != 0 {
-		err := os.Remove(appSymlinkDir)
-		if err != nil {
-			return err
-		}
+	err = RemoveLink(appSymlinkDir)
+	if err != nil && !os.IsNotExist(err) {
+		return err
 	}
 
 	err = os.Symlink(binPath, appSymlinkDir)
@@ -170,10 +183,17 @@ func (symlinks *Symlinks) ExportVersionLink() error {
 		}
 	} else {
 		var binaryToAdd []*proto.BinaryInfo
+		preVersionName := appInfo.GetCurrentVersion().GetVersionName()
 
-		previousVersionInfo := appInfo.GetCurrentVersion()
-		if previousVersionInfo != nil {
-			binaryToAddTemp, binaryToRm, binaryRemain := DualDifference(versionInfo.EntryBinaries, previousVersionInfo.EntryBinaries)
+		if preVersionName != "" {
+			preVersionMeta := meta.GetVersionMeta(appInfo.GetApp().GetAppName(), preVersionName)
+			preVersionInfo, err := preVersionMeta.FetchVersionInfoFS()
+
+			if err != nil {
+				return err
+			}
+
+			binaryToAddTemp, binaryToRm, binaryRemain := DualDifference(versionInfo.EntryBinaries, preVersionInfo.EntryBinaries)
 			binaryToAdd = binaryToAddTemp
 
 			for _, binary := range binaryRemain {
@@ -183,7 +203,7 @@ func (symlinks *Symlinks) ExportVersionLink() error {
 				}
 			}
 
-			err := RemoveLinks(binaryToRm, exportPath)
+			err = RemoveLinks(binaryToRm, exportPath)
 			if err != nil {
 				return err
 			}
@@ -191,7 +211,7 @@ func (symlinks *Symlinks) ExportVersionLink() error {
 			binaryToAdd = versionInfo.EntryBinaries
 		}
 
-		err := CreateLinks(binaryToAdd, appSymlinkDir, exportPath)
+		err = CreateLinks(binaryToAdd, appSymlinkDir, exportPath)
 		if err != nil {
 			return err
 		}
@@ -235,6 +255,15 @@ func (symlinks *Symlinks) RemoveVersionLink() error {
 
 	err = RemoveLinks(versionInfo.EntryBinaries, exportPath)
 	if err != nil {
+		return err
+	}
+
+	activeDir, err := symlinks.GetAppActiveSymlinkDir()
+	if err != nil {
+		return err
+	}
+	err = RemoveLink(activeDir)
+	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 

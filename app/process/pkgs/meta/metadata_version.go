@@ -57,6 +57,10 @@ func (version *VersionMetadata) GetVersionMetadataFile() (string, error) {
 }
 
 func (version *VersionMetadata) FetchVersionInfoFS() (*proto.Version, error) {
+	if version.AppName == "" || version.VersionName == "" {
+		return nil, fmt.Errorf("appName(%s) or versionName(%s) not specified", version.AppName, version.VersionName)
+	}
+
 	version.Lock.Lock()
 	defer version.Lock.Unlock()
 
