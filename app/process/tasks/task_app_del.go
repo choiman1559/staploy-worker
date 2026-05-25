@@ -44,7 +44,7 @@ func (t *TaskAppDelete) InvokeTask() (*proto.WorkerPacket, error) {
 				}
 
 				log.Printf("Removing package %s (%s)", appFetch.App.AppName, version.VersionName)
-				appBinaryManager := binary.NewApp(appFetch.App.AppName, version.VersionName, "")
+				appBinaryManager := binary.NewApp(appFetch.App, version.VersionName, "")
 				err := appBinaryManager.UninstallAppPack()
 				if err != nil {
 					return nil, err

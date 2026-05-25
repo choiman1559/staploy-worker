@@ -18,11 +18,12 @@ type Config struct {
 	ProfileDir string `arg:"--profile-dir" help:"overrides path to profile directory"`
 	CacheDir   string `arg:"--cache-dir" help:"overrides path to cache directory"`
 
-	BufferSize         int64 `arg:"--buffer-size" default:"65535" help:"overrides buffer size in bytes"`
-	RemoteShell        bool  `arg:"--remote-shell" help:"(Experimental) use remote shell"`
-	DisableSymlinkDir  bool  `arg:"--disable-symlink-dir" help:"disable symlink version dir and directly create symlinks to files"`
-	SkipHashValidCheck bool  `arg:"--skip-hash-verify" help:"skip hash verification when downloading package"`
-	Verbose            bool  `arg:"-v,--verbose" help:"verbose output"`
+	BufferSize         int64  `arg:"--buffer-size" default:"65535" help:"overrides buffer size in bytes"`
+	RemoteShell        bool   `arg:"--remote-shell" help:"(Experimental) use remote shell"`
+	DisableSymlinkDir  bool   `arg:"--disable-symlink-dir" help:"disable symlink version dir and directly create symlinks to files"`
+	SkipHashValidCheck bool   `arg:"--skip-hash-verify" help:"skip hash verification when downloading package"`
+	OverrideShellExec  string `arg:"--override-shell" help:"specify shell program rather than bash in $PATH"`
+	Verbose            bool   `arg:"-v,--verbose" help:"verbose output"`
 }
 
 func (c *Config) Version() string {

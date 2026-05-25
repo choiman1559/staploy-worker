@@ -12,16 +12,18 @@ import (
 )
 
 type AppPackageManager struct {
-	ArchivePath string
-	AppMeta     *meta.AppMetadata
-	VersionMeta *meta.VersionMetadata
+	ArchivePath    string
+	AppMeta        *meta.AppMetadata
+	VersionMeta    *meta.VersionMetadata
+	AppDescription string
 }
 
-func NewApp(appName string, versionName string, archivePath string) *AppPackageManager {
+func NewApp(appInfo *proto.AppInfo, versionName string, archivePath string) *AppPackageManager {
 	return &AppPackageManager{
-		ArchivePath: archivePath,
-		AppMeta:     meta.GetAppMeta(appName),
-		VersionMeta: meta.GetVersionMeta(appName, versionName),
+		ArchivePath:    archivePath,
+		AppMeta:        meta.GetAppMeta(appInfo.GetAppName()),
+		VersionMeta:    meta.GetVersionMeta(appInfo.GetAppName(), versionName),
+		AppDescription: appInfo.GetAppDescription(),
 	}
 }
 
@@ -37,6 +39,8 @@ func (app *AppPackageManager) InstallAppPack() error {
 	}
 
 	newVersion := &proto.Version{VersionName: app.VersionMeta.VersionName}
+	var appInfoToUpdate *proto.InstalledAppInfo
+
 	if app.AppMeta.IsMetadataAvailable() {
 		appInfo, err := app.AppMeta.FetchAppInfoFS()
 		if err != nil {
@@ -53,11 +57,7 @@ func (app *AppPackageManager) InstallAppPack() error {
 		if needAppending {
 			appInfo.AvailableVersion = append(appInfo.AvailableVersion, newVersion)
 		}
-
-		err = app.AppMeta.CommitAppInfoFS(appInfo)
-		if err != nil {
-			return err
-		}
+		appInfoToUpdate = appInfo
 	} else {
 		appInfo := &proto.InstalledAppInfo{
 			App: &proto.AppInfo{
@@ -66,12 +66,16 @@ func (app *AppPackageManager) InstallAppPack() error {
 			CurrentVersion:   nil,
 			AvailableVersion: make([]*proto.Version, 0),
 		}
+		appInfoToUpdate = appInfo
+	}
 
-		appInfo.AvailableVersion = append(appInfo.AvailableVersion, newVersion)
-		err := app.AppMeta.CommitAppInfoFS(appInfo)
-		if err != nil {
-			return err
-		}
+	if app.AppDescription != "" {
+		appInfoToUpdate.App.AppDescription = &app.AppDescription
+	}
+
+	err = app.AppMeta.CommitAppInfoFS(appInfoToUpdate)
+	if err != nil {
+		return err
 	}
 	return nil
 }

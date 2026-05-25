@@ -45,7 +45,7 @@ func (t *TaskAppAdd) InvokeTask() (*proto.WorkerPacket, error) {
 	}
 
 	log.Printf("Unpacking package %s (%s)", fetch.App.AppName, fetch.AppVersion[0].VersionName)
-	appRegistration := binary.NewApp(fetch.App.AppName, fetch.AppVersion[0].VersionName, savePath)
+	appRegistration := binary.NewApp(fetch.App, fetch.AppVersion[0].VersionName, savePath)
 	err = appRegistration.InstallAppPack()
 	if err != nil {
 		return nil, err

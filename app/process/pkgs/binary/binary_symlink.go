@@ -2,6 +2,7 @@ package binary
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"staploy-worker/app/consts"
@@ -60,15 +61,82 @@ func DualDifference(s []*proto.BinaryInfo, other []*proto.BinaryInfo) ([]*proto.
 	return aMinusB, bMinusA, aAndB
 }
 
-func CreateLinks(binaries []*proto.BinaryInfo, binPath string, exportPath string) error {
-	for _, binary := range binaries {
+func (symlinks *Symlinks) checkSymlinkCompatibility(binaryName, path string) error {
+	fi, err := os.Lstat(path)
+	if err == nil {
+		if fi.Mode()&os.ModeSymlink != 0 {
+			originalPath, err := filepath.EvalSymlinks(path)
+			if err != nil {
+				return nil
+			}
+
+			binDir, err := files.GetBinDir()
+			if err != nil {
+				return err
+			}
+			binAbs, err := filepath.Abs(binDir.Name())
+			if err != nil {
+				return err
+			}
+
+			if !strings.HasSuffix(originalPath, binAbs) {
+				errMsg := fmt.Sprintf("Binary %s (in %s-%s) conflicts with real file %s. Abort linking.",
+					binaryName, symlinks.AppMeta.AppName, symlinks.VersionMeta.VersionName, originalPath)
+				log.Printf(errMsg)
+				return fmt.Errorf(errMsg)
+			}
+
+			originalPath = strings.TrimSuffix(binAbs, originalPath)
+			linkName := strings.Split(originalPath, "/")[0]
+			appMeta, err := meta.GetAppMeta(linkName).FetchAppInfoFS()
+			if err != nil {
+				return err
+			}
+
+			if appMeta != nil {
+				errMsg := fmt.Sprintf("Binary %s (in %s-%s) conflicts with current-enabled package %s (%s). Abort linking.",
+					binaryName, symlinks.AppMeta.AppName, symlinks.VersionMeta.VersionName, appMeta.App.AppName, appMeta.CurrentVersion.VersionName)
+				log.Printf(errMsg)
+				return fmt.Errorf(errMsg)
+			}
+		} else {
+			errMsg := fmt.Sprintf("Binary %s (in %s-%s) conflicts with real file %s. Abort linking.",
+				binaryName, symlinks.AppMeta.AppName, symlinks.VersionMeta.VersionName, path)
+			log.Printf(errMsg)
+			return fmt.Errorf(errMsg)
+		}
+	}
+	return nil
+}
+
+func (symlinks *Symlinks) CreateLinks(binaries []*proto.BinaryInfo, binPath string, exportPath string) error {
+	type SymOps struct {
+		originalBinPath string
+		linkFile        string
+	}
+	symOpsList := make([]*SymOps, len(binaries))
+
+	for i, binary := range binaries {
 		originalBinPath := filepath.Join(binPath, binary.GetName())
 		err := files.SetExecutable(originalBinPath, true)
 		if err != nil {
 			return err
 		}
 
-		err = os.Symlink(originalBinPath, filepath.Join(exportPath, binary.GetName()))
+		linkFile := filepath.Join(exportPath, binary.GetName())
+		err = symlinks.checkSymlinkCompatibility(binary.GetName(), linkFile)
+		if err != nil {
+			return err
+		}
+
+		symOpsList[i] = &SymOps{
+			originalBinPath: originalBinPath,
+			linkFile:        linkFile,
+		}
+	}
+
+	for _, symOps := range symOpsList {
+		err := os.Symlink(symOps.originalBinPath, symOps.linkFile)
 		if err != nil {
 			return err
 		}
@@ -177,7 +245,7 @@ func (symlinks *Symlinks) ExportVersionLink() error {
 	}
 
 	if service.ArgsConfig.DisableSymlinkDir {
-		err := CreateLinks(versionInfo.EntryBinaries, binPath, exportPath)
+		err := symlinks.CreateLinks(versionInfo.EntryBinaries, binPath, exportPath)
 		if err != nil {
 			return err
 		}
@@ -211,7 +279,7 @@ func (symlinks *Symlinks) ExportVersionLink() error {
 			binaryToAdd = versionInfo.EntryBinaries
 		}
 
-		err = CreateLinks(binaryToAdd, appSymlinkDir, exportPath)
+		err = symlinks.CreateLinks(binaryToAdd, appSymlinkDir, exportPath)
 		if err != nil {
 			return err
 		}

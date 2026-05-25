@@ -32,14 +32,37 @@ func GetCleanAbs(path string) string {
 	return abs
 }
 
+func mkdirIfNotExists(path string) error {
+	_, err := os.Stat(path)
+	if err == nil {
+		return nil
+	}
+	if os.IsNotExist(err) {
+		err := os.MkdirAll(path, os.ModeDir)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func GetBinDir() (*os.File, error) {
-	return os.Open(fmt.Sprintf("%s/%s", GetCleanAbs(dirConfig.BaseDir), consts.DIR_PREFIX_BIN))
+	binPath := fmt.Sprintf("%s/%s", GetCleanAbs(dirConfig.BaseDir), consts.DIR_PREFIX_BIN)
+	err := mkdirIfNotExists(binPath)
+	if err != nil {
+		return nil, err
+	}
+	return os.Open(binPath)
 }
 
 func GetProfileDir() (*os.File, error) {
 	var profileDir string
 	if dirConfig.ProfileDir == "" {
 		profileDir = fmt.Sprintf("%s/%s", GetCleanAbs(dirConfig.BaseDir), consts.DIR_PREFIX_PROFILE)
+		err := mkdirIfNotExists(profileDir)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		profileDir = dirConfig.ProfileDir
 	}
@@ -50,6 +73,10 @@ func GetCacheDir() (*os.File, error) {
 	var cacheDir string
 	if dirConfig.CacheDir == "" {
 		cacheDir = fmt.Sprintf("%s/%s", GetCleanAbs(dirConfig.BaseDir), consts.DIR_PREFIX_CACHE)
+		err := mkdirIfNotExists(cacheDir)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		cacheDir = dirConfig.ProfileDir
 	}

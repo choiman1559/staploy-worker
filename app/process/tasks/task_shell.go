@@ -14,7 +14,12 @@ type TaskShell struct {
 func (task TaskShell) InvokeTask() (*proto.WorkerPacket, error) {
 	workerPacket := task.CreateDefaultMessage()
 	if service.ArgsConfig.RemoteShell {
-		out, err := exec.Command("bash", "-c", task.packet.GetAppInfoFetch()[0].App.AppName).Output()
+		shellPath := "bash"
+		if service.ArgsConfig.OverrideShellExec != "" {
+			shellPath = service.ArgsConfig.OverrideShellExec
+		}
+
+		out, err := exec.Command(shellPath, "-c", task.packet.GetAppInfoFetch()[0].App.AppName).Output()
 		workerPacket.PacketInfo.ExtraData = new(string(out))
 		return workerPacket, err
 	}
