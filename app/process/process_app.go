@@ -7,7 +7,7 @@ import (
 	"staploy-worker/app/service"
 )
 
-var currentTaskMap = NewSafeMap()
+var currentTaskMap = NewSafeQueue()
 var executableTaskMap = map[proto.ActionProcedure]tasks.TaskInvoker{
 	proto.ActionProcedure_PROCEDURE_NONE:                &tasks.TaskNone{},
 	proto.ActionProcedure_PROCEDURE_REQUEST_WORKER_INFO: &tasks.TaskNodeInfo{},
@@ -25,7 +25,7 @@ func processAppAction(session *service.Session, packet *proto.ServerPacket) {
 		ResultFinished: false,
 	}
 
-	currentTaskMap.Set(packet.GetPacketInfo().GetChallengeCode(), &resultObj)
+	currentTaskMap.Enqueue(packet.GetPacketInfo().GetChallengeCode(), &resultObj)
 	targetTask := executableTaskMap[packet.GetPacketInfo().GetActionProcedure()]
 	if targetTask == nil {
 		resultObj.ResultFinished = false
@@ -36,7 +36,7 @@ func processAppAction(session *service.Session, packet *proto.ServerPacket) {
 			PacketInfo: packet.GetPacketInfo(),
 			TaskResult: &resultObj,
 		})
-		currentTaskMap.Set(packet.GetPacketInfo().GetChallengeCode(), &resultObj)
+		currentTaskMap.Enqueue(packet.GetPacketInfo().GetChallengeCode(), &resultObj)
 		return
 	}
 
@@ -53,6 +53,6 @@ func processAppAction(session *service.Session, packet *proto.ServerPacket) {
 	}
 
 	workerPacket.TaskResult = &resultObj
-	currentTaskMap.Set(packet.GetPacketInfo().GetChallengeCode(), &resultObj)
+	currentTaskMap.Enqueue(packet.GetPacketInfo().GetChallengeCode(), &resultObj)
 	sendMessage(session, workerPacket)
 }

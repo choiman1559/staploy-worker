@@ -61,6 +61,7 @@ func DualDifference(s []*proto.BinaryInfo, other []*proto.BinaryInfo) ([]*proto.
 	return aMinusB, bMinusA, aAndB
 }
 
+// TODO: TEST THIS GIANT SHIT
 func (symlinks *Symlinks) checkSymlinkCompatibility(binaryName, path string) error {
 	fi, err := os.Lstat(path)
 	if err == nil {
