@@ -9,8 +9,6 @@ import (
 	"github.com/coder/websocket"
 )
 
-const VERSION = "0.1.0"
-
 type Config struct {
 	Address    string `arg:"-a,required" help:"server address"`
 	Port       int    `arg:"-p,required" help:"server port"`
@@ -27,7 +25,7 @@ type Config struct {
 }
 
 func (c *Config) Version() string {
-	return fmt.Sprintf("staploy-worker %s (%s)", VERSION, GetWorkerCpuArch().String())
+	return fmt.Sprintf("staploy-worker %s (%s)", consts.VERSION, GetWorkerCpuArch().String())
 }
 
 var WebSocketSession Session

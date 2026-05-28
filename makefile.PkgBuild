@@ -5,10 +5,11 @@ CLI_TOOL     := staploy_cli
 
 ARCHES := 386 amd64 arm arm64 riscv64 mipsle mips64le
 .PHONY: buildAll clean_out createPkg $(ARCHES)
-buildAll: $(ARCHES)
+buildBinaries: $(ARCHES)
+buildPkg: buildBinaries createPkg
 
 $(ARCHES):
-	GOOS=linux GOARCH=$@ go build -ldflags="-s -w" -o $(OUT_DIR)/$@/staploy staploy-worker
+	GOOS=linux GOARCH=$@ go build -ldflags="-s -w -X staploy-worker/app/consts.VERSION=$(VERSION_NAME)" -o $(OUT_DIR)/$@/staploy staploy-worker
 
 createPkg:
 	$(CLI_TOOL) build \

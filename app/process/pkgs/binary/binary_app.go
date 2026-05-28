@@ -40,6 +40,7 @@ func (app *AppPackageManager) InstallAppPack() error {
 
 	newVersion := &proto.Version{VersionName: app.VersionMeta.VersionName}
 	var appInfoToUpdate *proto.InstalledAppInfo
+	needAppending := true
 
 	if app.AppMeta.IsMetadataAvailable() {
 		appInfo, err := app.AppMeta.FetchAppInfoFS()
@@ -47,15 +48,10 @@ func (app *AppPackageManager) InstallAppPack() error {
 			return err
 		}
 
-		needAppending := true
 		for _, version := range appInfo.AvailableVersion {
 			if newVersion.GetVersionName() == version.GetVersionName() {
 				needAppending = false
 			}
-		}
-
-		if needAppending {
-			appInfo.AvailableVersion = append(appInfo.AvailableVersion, newVersion)
 		}
 		appInfoToUpdate = appInfo
 	} else {
@@ -67,6 +63,10 @@ func (app *AppPackageManager) InstallAppPack() error {
 			AvailableVersion: make([]*proto.Version, 0),
 		}
 		appInfoToUpdate = appInfo
+	}
+
+	if needAppending {
+		appInfoToUpdate.AvailableVersion = append(appInfoToUpdate.AvailableVersion, newVersion)
 	}
 
 	if app.AppDescription != "" {

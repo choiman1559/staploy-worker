@@ -51,7 +51,7 @@ func (t *TaskAppDelete) InvokeTask() (*proto.WorkerPacket, error) {
 				}
 			}
 		} else {
-			if currentVersion != nil {
+			if currentVersion != nil && currentVersion.GetVersionName() != "" {
 				symlinker := binary.CreateSymlinkOps(appFetch.App.AppName, currentVersion.GetVersionName())
 				err := symlinker.RemoveVersionLink()
 				if err != nil {

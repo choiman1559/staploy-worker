@@ -61,7 +61,6 @@ func DualDifference(s []*proto.BinaryInfo, other []*proto.BinaryInfo) ([]*proto.
 	return aMinusB, bMinusA, aAndB
 }
 
-// TODO: TEST THIS GIANT SHIT
 func (symlinks *Symlinks) checkSymlinkCompatibility(binaryName, path string) error {
 	fi, err := os.Lstat(path)
 	if err == nil {
@@ -80,15 +79,16 @@ func (symlinks *Symlinks) checkSymlinkCompatibility(binaryName, path string) err
 				return err
 			}
 
-			if !strings.HasSuffix(originalPath, binAbs) {
+			if !strings.HasPrefix(originalPath, binAbs) {
 				errMsg := fmt.Sprintf("Binary %s (in %s-%s) conflicts with real file %s. Abort linking.",
 					binaryName, symlinks.AppMeta.AppName, symlinks.VersionMeta.VersionName, originalPath)
 				log.Printf(errMsg)
 				return fmt.Errorf(errMsg)
 			}
 
-			originalPath = strings.TrimSuffix(binAbs, originalPath)
-			linkName := strings.Split(originalPath, "/")[0]
+			trimPath := strings.TrimPrefix(originalPath, binAbs)
+			linkName := strings.Split(trimPath, "/")[1]
+
 			appMeta, err := meta.GetAppMeta(linkName).FetchAppInfoFS()
 			if err != nil {
 				return err

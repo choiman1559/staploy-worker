@@ -1,5 +1,7 @@
 package consts
 
+var VERSION = "DEV"
+
 const (
 	APIRouteSchema = "/api/%s/%s" // INFO: Schema => /api/{version}/{connection_type}
 	ConnTypeAdmin  = "admin"
