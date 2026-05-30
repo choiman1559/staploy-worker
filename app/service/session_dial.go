@@ -62,6 +62,11 @@ func InitSession(a *Config, eventListener EventListener) {
 	}(&WebSocketSession)
 }
 
+func IsDebug() bool {
+	//goland:noinspection GoBoolExpressions
+	return consts.VERSION == consts.VERSION_DEV
+}
+
 func readLoop(s *Session) error {
 	for {
 		_, data, err := s.conn.Read(s.context)
@@ -75,7 +80,7 @@ func readLoop(s *Session) error {
 			return err
 		}
 
-		if ArgsConfig.Verbose {
+		if ArgsConfig.Verbose && IsDebug() {
 			log.Printf("Received raw message: %s\n", data)
 		}
 		s.listener.OnIncomingData(s, data)

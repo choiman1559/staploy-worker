@@ -1,6 +1,8 @@
 package consts
 
-var VERSION = "DEV"
+const VERSION_DEV = "DEV"
+
+var VERSION = VERSION_DEV
 
 const (
 	APIRouteSchema = "/api/%s/%s" // INFO: Schema => /api/{version}/{connection_type}

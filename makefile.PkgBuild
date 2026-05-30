@@ -9,7 +9,7 @@ buildBinaries: $(ARCHES)
 buildPkg: buildBinaries createPkg
 
 $(ARCHES):
-	GOOS=linux GOARCH=$@ go build -ldflags="-s -w -X staploy-worker/app/consts.VERSION=$(VERSION_NAME)" -o $(OUT_DIR)/$@/staploy staploy-worker
+	CGO_ENABLED=0 GOOS=linux GOARCH=$@ go build -ldflags="-s -w -X staploy-worker/app/consts.VERSION=$(VERSION_NAME)" -o $(OUT_DIR)/$@/staploy staploy-worker
 
 createPkg:
 	$(CLI_TOOL) build \
