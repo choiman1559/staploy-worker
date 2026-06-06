@@ -30,9 +30,14 @@ func CreateDefaultWorkerInfo(requireDetail bool) *proto.WorkerInfo {
 	workerInfo := atomicWorkerDefaultInfo.Load()
 	if workerInfo == nil {
 		info, _ := host.Info()
+		workerName := info.Hostname
+		if ArgsConfig.OverrideName != "" {
+			workerName = ArgsConfig.OverrideName
+		}
+
 		workerInfo = &proto.WorkerInfo{
 			WorkerId:   GetWorkerUniqueId(),
-			WorkerName: info.Hostname,
+			WorkerName: workerName,
 			WorkerFlags: &proto.WorkerFlags{
 				BUFFER_SIZE:            ArgsConfig.BufferSize,
 				USE_REMOTE_SHELL:       ArgsConfig.RemoteShell,
