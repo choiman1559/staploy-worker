@@ -1,6 +1,7 @@
 package files
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io"
 	"mime"
@@ -11,7 +12,7 @@ import (
 	"time"
 )
 
-func DownloadFileWithUrl(url string, filepath string, headers map[string]string) error {
+func DownloadFileWithUrl(url string, filepath string, headers map[string]string, config *tls.Config) error {
 	out, err := os.Create(filepath)
 	if err != nil {
 		return err
@@ -26,6 +27,10 @@ func DownloadFileWithUrl(url string, filepath string, headers map[string]string)
 
 	client := &http.Client{
 		Timeout: 30 * time.Second,
+	}
+
+	if config != nil {
+		client.Transport = &http.Transport{TLSClientConfig: config}
 	}
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -57,6 +62,7 @@ func DownloadFileWithUrl(url string, filepath string, headers map[string]string)
 	return err
 }
 
+//goland:noinspection GoUnusedExportedFunction
 func DownloadFileWithUrlMultipart(url string, savePath string, headers map[string]string) error {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)

@@ -40,6 +40,7 @@ func (c *Config) Version() string {
 
 var WebSocketSession Session
 var ArgsConfig *Config
+var TlsConfig *tls.Config
 
 func InitSession(a *Config, eventListener EventListener) {
 	ArgsConfig = a
@@ -63,12 +64,13 @@ func InitSession(a *Config, eventListener EventListener) {
 			log.Fatalf("Failed to load client pair key certification: %v", err)
 		}
 
-		tlsConfig := &tls.Config{
+		TlsConfig = &tls.Config{
 			Certificates: []tls.Certificate{clientCert},
 			RootCAs:      caCertPool,
+			MinVersion:   tls.VersionTLS13,
 		}
-		customHTTPClient.Transport = &http.Transport{TLSClientConfig: tlsConfig}
-		log.Printf("Using mTLS certification %#v", tlsConfig.ClientAuth.String())
+		customHTTPClient.Transport = &http.Transport{TLSClientConfig: TlsConfig}
+		log.Printf("Using mTLS certification %#v", TlsConfig.ClientAuth.String())
 	}
 
 	dialOpts := &websocket.DialOptions{

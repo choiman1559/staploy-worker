@@ -31,15 +31,18 @@ func (t *TaskAppAdd) InvokeTask() (*proto.WorkerPacket, error) {
 	savePath := filepath.Join(cacheDir.Name(), saveName)
 	var paths = fmt.Sprintf(consts.APIRouteSchema, "v1", consts.ConnTypeWorker)
 
-	//goland:noinspection ALL (disable http warning)
-	var addr = fmt.Sprintf("http://%s:%d%s", service.ArgsConfig.Address, service.ArgsConfig.Port, paths)
+	httpPrefix := "http"
+	if service.ArgsConfig.Enable_mTLS {
+		httpPrefix = "https"
+	}
 
+	var addr = fmt.Sprintf("%s://%s:%d%s", httpPrefix, service.ArgsConfig.Address, service.ArgsConfig.Port, paths)
 	dwHeader := map[string]string{
 		consts.BLOB_REQ_TYPE:          consts.BLOB_REQ_TYPE_DOWNLOAD,
 		consts.BLOB_REQ_TYPE_DOWNLOAD: dwCode,
 	}
 
-	err = files.DownloadFileWithUrl(addr, savePath, dwHeader)
+	err = files.DownloadFileWithUrl(addr, savePath, dwHeader, service.TlsConfig)
 	if err != nil {
 		return nil, err
 	}
