@@ -1,13 +1,17 @@
 MODULE := $(shell grep ^module go.mod | awk '{print $$2}')
 SRC_DIR := protobuf
 OUT_DIR := app/proto
+CORE_NAMES := protocol cpus app
 
 GOPATH_DEFAULT := $(shell go env GOPATH)
 ifeq ($(GOPATH_DEFAULT),)
     GOPATH_DEFAULT := $(HOME)/go
 endif
 GOPATH_BIN := $(GOPATH_DEFAULT)/bin
-PROTO_FILES := $(shell find $(SRC_DIR) -name "*.proto")
+
+TARGET_PATTERNS := $(addprefix %/, $(addsuffix .proto, $(CORE_NAMES)))
+ALL_PROTO_FILES := $(wildcard $(SRC_DIR)/*.proto)
+PROTO_FILES     := $(filter $(TARGET_PATTERNS), $(ALL_PROTO_FILES))
 M_ARGS := $(foreach file,$(PROTO_FILES),--go_opt=M$(subst $(SRC_DIR)/,,$(file))=$(MODULE)/$(OUT_DIR))
 
 .PHONY: all proto clean
