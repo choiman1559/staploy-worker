@@ -2,6 +2,7 @@ OUT_DIR      := out
 LIB_VER      := $(shell go version)
 VERSION_NAME := 0.1.0
 CLI_TOOL     := staploy_cli
+VERSION_NAME := 1.0.0
 
 ARCHES := 386 amd64 arm arm64 riscv64 mipsle mips64le
 .PHONY: buildAll clean_out createPkg $(ARCHES)
