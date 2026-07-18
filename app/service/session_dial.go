@@ -86,9 +86,10 @@ func InitSession(a *Config, eventListener EventListener) {
 
 	var paths = fmt.Sprintf(consts.APIRouteSchema, "v1", consts.ConnTypeWorker)
 	var addr = fmt.Sprintf("%s://%s:%d%s", wsAddrPrefix, ArgsConfig.Address, ArgsConfig.Port, paths)
+	var isNotFirstTry = false
 
 	for {
-		if ArgsConfig.MaxRetryOnDisconn != -1 && CurrentTryAttempt >= ArgsConfig.MaxRetryOnDisconn {
+		if isNotFirstTry && ArgsConfig.MaxRetryOnDisconn != -1 && CurrentTryAttempt >= ArgsConfig.MaxRetryOnDisconn {
 			if ArgsConfig.MaxRetryOnDisconn == 0 {
 				log.Printf("Connection configuration specifies no retries (0). Terminating worker daemon...\n")
 			} else {
@@ -98,7 +99,9 @@ func InitSession(a *Config, eventListener EventListener) {
 			break
 		}
 
+		isNotFirstTry = true
 		c, _, err := websocket.Dial(ctx, addr, dialOpts)
+
 		if err != nil {
 			CurrentTryAttempt++
 
