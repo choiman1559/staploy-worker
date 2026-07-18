@@ -9,13 +9,14 @@ import (
 	"net/http"
 	"os"
 	"staploy-worker/app/consts"
+	"time"
 
 	"github.com/coder/websocket"
 )
 
 type Config struct {
 	Address    string `arg:"-a,env:STAPLOY_SERVER_ADDR,required" help:"server address"`
-	Port       int    `arg:"-p,env:STAPLOY_SERVER_PORT,required" help:"server port"`
+	Port       uint16 `arg:"-p,env:STAPLOY_SERVER_PORT,required" help:"server port"`
 	BaseDir    string `arg:"-d,--base-dir,env:STAPLOY_DIR_BASE,required" help:"path to base binary directory"`
 	ProfileDir string `arg:"--profile-dir,env:STAPLOY_DIR_PROFILE" help:"overrides path to profile directory"`
 	CacheDir   string `arg:"--cache-dir,env:STAPLOY_DIR_CACHE" help:"overrides path to cache directory"`
@@ -31,6 +32,7 @@ type Config struct {
 	DisableSymlinkDir  bool   `arg:"--disable-symlink-dir,env:STAPLOY_DISABLE_SYMDIR" help:"disable symlink version dir and directly create symlinks to files"`
 	SkipHashValidCheck bool   `arg:"--skip-hash-verify,env:STAPLOY_SKIP_VERIFY" help:"skip hash verification when downloading package"`
 	OverrideShellExec  string `arg:"--override-shell,env:STAPLOY_SHELL_PATH" help:"specify shell program rather than bash in $PATH"`
+	MaxRetryOnDisconn  int8   `arg:"--max-retry,env:STAPLOY_MAX_RECONN" help:"maximum number of retry attempts to connect to server; -1 for infinite retry, 0 (Default) for no retry"`
 	Verbose            bool   `arg:"-v,--verbose,env:STAPLOY_VERBOSE" help:"verbose output"`
 }
 
@@ -41,9 +43,14 @@ func (c *Config) Version() string {
 var WebSocketSession Session
 var ArgsConfig *Config
 var TlsConfig *tls.Config
+var CurrentTryAttempt int8 = 0
 
 func InitSession(a *Config, eventListener EventListener) {
 	ArgsConfig = a
+
+	if ArgsConfig.MaxRetryOnDisconn < -1 {
+		log.Fatalf("max retry count must be greater than -1")
+	}
 
 	ctx := context.Background()
 	customHTTPClient := &http.Client{}
@@ -80,28 +87,56 @@ func InitSession(a *Config, eventListener EventListener) {
 	var paths = fmt.Sprintf(consts.APIRouteSchema, "v1", consts.ConnTypeWorker)
 	var addr = fmt.Sprintf("%s://%s:%d%s", wsAddrPrefix, ArgsConfig.Address, ArgsConfig.Port, paths)
 
-	c, _, err := websocket.Dial(ctx, addr, dialOpts)
-	if err != nil {
-		log.Fatalf("Failed to connect to server: %s\nCause: %s\n", addr, err.Error())
-	}
-
-	WebSocketSession = Session{
-		context:  ctx,
-		conn:     c,
-		listener: eventListener,
-	}
-
-	err = readLoop(&WebSocketSession)
-	if err != nil {
-		log.Fatalf("Failed to read data: %s\n", err)
-	}
-
-	defer func(s *Session) {
-		err := s.CloseNow()
-		if err != nil {
-			log.Fatalf("Failed to close connection: %s\n", err)
+	for {
+		if ArgsConfig.MaxRetryOnDisconn != -1 && CurrentTryAttempt >= ArgsConfig.MaxRetryOnDisconn {
+			if ArgsConfig.MaxRetryOnDisconn == 0 {
+				log.Printf("Connection configuration specifies no retries (0). Terminating worker daemon...\n")
+			} else {
+				log.Printf("Reached maximum connection retry attempts (%d/%d). Terminating...\n",
+					CurrentTryAttempt, ArgsConfig.MaxRetryOnDisconn)
+			}
+			break
 		}
-	}(&WebSocketSession)
+
+		c, _, err := websocket.Dial(ctx, addr, dialOpts)
+		if err != nil {
+			CurrentTryAttempt++
+
+			if ArgsConfig.MaxRetryOnDisconn == -1 {
+				log.Printf("Failed to connect to server: %s | Cause: %s [Infinite Retry Mode]\n", addr, err.Error())
+			} else {
+				log.Printf("Failed to connect to server: %s | Cause: %s (Attempt: %d/%d)\n",
+					addr, err.Error(), CurrentTryAttempt, ArgsConfig.MaxRetryOnDisconn)
+			}
+
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
+		log.Printf("Successfully established WebSocket connection to %s\n", addr)
+		WebSocketSession = Session{
+			context:  ctx,
+			conn:     c,
+			listener: eventListener,
+		}
+
+		err = readLoop(&WebSocketSession)
+		if err != nil {
+			log.Printf("Network stream read loop interrupted: %s\n", err.Error())
+		}
+
+		log.Println("Connection closed by remote server. Initiating cleanup...")
+		if ArgsConfig.MaxRetryOnDisconn == 0 {
+			log.Println("MaxRetryOnDisconn is 0. Terminating immediately without reconnection.")
+			break
+		}
+
+		log.Println("Reconnecting in 5 seconds...")
+		time.Sleep(5 * time.Second)
+	}
+
+	log.Println("Staploy worker engine gracefully stopped. All kernel descriptors released.")
+	os.Exit(0)
 }
 
 func IsDebug() bool {
@@ -110,6 +145,13 @@ func IsDebug() bool {
 }
 
 func readLoop(s *Session) error {
+	CurrentTryAttempt = 0
+	defer func() {
+		go func() {
+			_ = s.CloseNow()
+		}()
+	}()
+
 	for {
 		_, data, err := s.conn.Read(s.context)
 		if err != nil {
@@ -117,7 +159,7 @@ func readLoop(s *Session) error {
 			closureReason := websocket.CloseStatus(err)
 
 			if closureReason == websocket.StatusNormalClosure {
-				log.Fatalf("Connection closed")
+				return nil
 			}
 			return err
 		}
