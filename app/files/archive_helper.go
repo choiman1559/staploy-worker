@@ -45,11 +45,11 @@ func ExtractTar(tarFile string, targetDir string) error {
 
 		switch header.Typeflag {
 		case tar.TypeDir:
-			if err := os.MkdirAll(targetPath, 0755); err != nil {
+			if err := MkdirAll(targetPath); err != nil {
 				return err
 			}
 		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+			if err := MkdirAll(filepath.Dir(targetPath)); err != nil {
 				return err
 			}
 

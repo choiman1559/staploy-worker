@@ -38,7 +38,7 @@ func mkdirIfNotExists(path string) error {
 		return nil
 	}
 	if os.IsNotExist(err) {
-		err := os.MkdirAll(path, os.ModeDir)
+		err := MkdirAll(path)
 		if err != nil {
 			return err
 		}

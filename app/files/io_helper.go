@@ -32,7 +32,7 @@ func WriteFileString(path string, content string) error {
 }
 
 func MkdirAll(path string) error {
-	return os.MkdirAll(path, 0755)
+	return os.MkdirAll(path, 0766)
 }
 
 func RmdirAll(path string) error {
