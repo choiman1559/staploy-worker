@@ -26,35 +26,33 @@ func CreateSymlinkOps(appName string, versionName string) *Symlinks {
 	return symlinks
 }
 
-func DualDifference(s []*proto.BinaryInfo, other []*proto.BinaryInfo) ([]*proto.BinaryInfo, []*proto.BinaryInfo, []*proto.BinaryInfo) {
+func DualDifference(a []*proto.BinaryInfo, b []*proto.BinaryInfo) ([]*proto.BinaryInfo, []*proto.BinaryInfo, []*proto.BinaryInfo) {
 	var aMinusB []*proto.BinaryInfo
 	var bMinusA []*proto.BinaryInfo
 	var aAndB []*proto.BinaryInfo
 
-	checkContain := func(d []*proto.BinaryInfo, f *proto.BinaryInfo) bool {
-		for _, i := range d {
-			if i.Name == f.Name {
-				return true
-			}
-		}
-		return false
+	aMap := make(map[string]*proto.BinaryInfo, len(a))
+	bMap := make(map[string]*proto.BinaryInfo, len(b))
+
+	for _, x := range a {
+		aMap[x.Name] = x
 	}
 
-	for _, data := range s {
-		if !checkContain(other, data) {
-			aMinusB = append(aMinusB, data)
-		}
+	for _, x := range b {
+		bMap[x.Name] = x
 	}
 
-	for _, data := range other {
-		if !checkContain(s, data) {
-			bMinusA = append(bMinusA, data)
+	for name, x := range aMap {
+		if _, ok := bMap[name]; ok {
+			aAndB = append(aAndB, x)
+		} else {
+			aMinusB = append(aMinusB, x)
 		}
 	}
 
-	for _, data := range other {
-		if checkContain(s, data) {
-			aAndB = append(aAndB, data)
+	for name, x := range bMap {
+		if _, ok := aMap[name]; !ok {
+			bMinusA = append(bMinusA, x)
 		}
 	}
 
@@ -79,11 +77,19 @@ func (symlinks *Symlinks) checkSymlinkCompatibility(binaryName, path string) err
 				return err
 			}
 
-			if !strings.HasPrefix(originalPath, binAbs) {
+			rel, err := filepath.Rel(binAbs, originalPath)
+			if err != nil {
 				errMsg := fmt.Sprintf("Binary %s (in %s-%s) conflicts with real file %s. Abort linking.",
 					binaryName, symlinks.AppMeta.AppName, symlinks.VersionMeta.VersionName, originalPath)
 				log.Printf(errMsg)
 				return fmt.Errorf(errMsg)
+			}
+
+			if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				err := fmt.Errorf("binary %s (in %s-%s) path is outside Staploy binary directory, Abort linking",
+					binaryName, symlinks.AppMeta.AppName, symlinks.VersionMeta.VersionName)
+				log.Printf(err.Error())
+				return err
 			}
 
 			trimPath := strings.TrimPrefix(originalPath, binAbs)
@@ -159,8 +165,7 @@ func RemoveLink(linkPath string) error {
 func RemoveLinks(binaries []*proto.BinaryInfo, exportPath string) error {
 	for _, binary := range binaries {
 		linkPath := filepath.Join(exportPath, binary.GetName())
-		err := os.Remove(linkPath)
-		if err != nil {
+		if err := RemoveLink(linkPath); err != nil {
 			return err
 		}
 	}
@@ -235,14 +240,39 @@ func (symlinks *Symlinks) ExportVersionLink() error {
 		return err
 	}
 
-	err = RemoveLink(appSymlinkDir)
-	if err != nil && !os.IsNotExist(err) {
-		return err
+	var matchVersion *proto.Version
+	for _, version := range appInfo.AvailableVersion {
+		if version.VersionName == symlinks.VersionMeta.VersionName {
+			matchVersion = version
+			break
+		}
 	}
 
-	err = os.Symlink(binPath, appSymlinkDir)
-	if err != nil {
-		return err
+	if matchVersion == nil {
+		return fmt.Errorf("version %s not found in available versions", symlinks.VersionMeta.VersionName)
+	}
+
+	if files.Exists(appSymlinkDir) {
+		tmpLink := appSymlinkDir + ".new"
+		err = os.Remove(tmpLink)
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+
+		err = os.Symlink(binPath, tmpLink)
+		if err != nil {
+			return err
+		}
+
+		err = os.Rename(tmpLink, appSymlinkDir)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = os.Symlink(binPath, appSymlinkDir)
+		if err != nil {
+			return err
+		}
 	}
 
 	if service.ArgsConfig.DisableSymlinkDir {
@@ -284,18 +314,6 @@ func (symlinks *Symlinks) ExportVersionLink() error {
 		if err != nil {
 			return err
 		}
-	}
-
-	var matchVersion *proto.Version
-	for _, version := range appInfo.AvailableVersion {
-		if version.VersionName == symlinks.VersionMeta.VersionName {
-			matchVersion = version
-			break
-		}
-	}
-
-	if matchVersion == nil {
-		return fmt.Errorf("version %s not found in available versions", symlinks.VersionMeta.VersionName)
 	}
 
 	appInfo.CurrentVersion = matchVersion

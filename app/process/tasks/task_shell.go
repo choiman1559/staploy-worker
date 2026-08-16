@@ -19,7 +19,7 @@ func (task TaskShell) InvokeTask() (*proto.WorkerPacket, error) {
 			shellPath = service.ArgsConfig.OverrideShellExec
 		}
 
-		out, err := exec.Command(shellPath, "-c", task.packet.GetAppInfoFetch()[0].App.AppName).Output()
+		out, err := exec.Command(shellPath, "-lc", task.packet.GetAppInfoFetch()[0].App.AppName).Output()
 		workerPacket.PacketInfo.ExtraData = new(string(out))
 		return workerPacket, err
 	}

@@ -33,11 +33,6 @@ func (app *AppPackageManager) InstallAppPack() error {
 		return err
 	}
 
-	err = files.ExtractTar(app.ArchivePath, binPath)
-	if err != nil {
-		return err
-	}
-
 	newVersion := &proto.Version{VersionName: app.VersionMeta.VersionName}
 	var appInfoToUpdate *proto.InstalledAppInfo
 	needAppending := true
@@ -46,6 +41,14 @@ func (app *AppPackageManager) InstallAppPack() error {
 		appInfo, err := app.AppMeta.FetchAppInfoFS()
 		if err != nil {
 			return err
+		}
+
+		if appInfo.GetCurrentVersion() != nil {
+			currentVersion := appInfo.GetCurrentVersion()
+			if currentVersion.VersionName == newVersion.VersionName {
+				return fmt.Errorf("requested binary \"%s\" (version %s) is currently activated, over-writing not allowed",
+					appInfo.GetApp().GetAppName(), newVersion.VersionName)
+			}
 		}
 
 		for _, version := range appInfo.AvailableVersion {
@@ -77,6 +80,12 @@ func (app *AppPackageManager) InstallAppPack() error {
 	if err != nil {
 		return err
 	}
+
+	err = files.ExtractTar(app.ArchivePath, binPath)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
