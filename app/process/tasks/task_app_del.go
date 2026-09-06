@@ -28,6 +28,11 @@ func (t *TaskAppDelete) InvokeTask() (*proto.WorkerPacket, error) {
 			return nil, errors.New(fmt.Sprintf("app name \"%s\" not found", appFetch.App.AppName))
 		}
 
+		appMeta := meta.GetAppMeta(appFetch.App.AppName)
+		if !appMeta.IsMetadataAvailable() {
+			return nil, errors.New(fmt.Sprintf("app metadata %s is not available on local filesystem", appFetch.App.AppName))
+		}
+
 		currentVersion, err := binary.CheckWhichVersionEnabled(appFetch.App.AppName)
 		if err != nil {
 			return nil, err
@@ -63,6 +68,13 @@ func (t *TaskAppDelete) InvokeTask() (*proto.WorkerPacket, error) {
 		}
 
 		if len(appFetch.GetAppVersion()) > 0 {
+			for _, version := range appFetch.GetAppVersion() {
+				versionMeta := meta.GetVersionMeta(appFetch.App.AppName, version.GetVersionName())
+				if !versionMeta.IsMetadataAvailable() {
+					return nil, fmt.Errorf("requested remove package \"%s\" (%s) not available on local storage", appFetch.App.AppName, version.GetVersionName())
+				}
+			}
+
 			for _, version := range appFetch.GetAppVersion() {
 				err := removeVersion(version)
 				if err != nil {
