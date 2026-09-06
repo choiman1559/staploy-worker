@@ -73,6 +73,7 @@ func (t *TaskAppAdd) InvokeTask() (*proto.WorkerPacket, error) {
 	defer func(path string) {
 		err := files.RmdirAll(path)
 		if err != nil {
+			log.Printf("Failed to remove used-up app artifact: %s", path)
 			return
 		}
 	}(savePath)

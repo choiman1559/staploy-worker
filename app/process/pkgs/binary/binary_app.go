@@ -9,6 +9,9 @@ import (
 	"staploy-worker/app/files"
 	"staploy-worker/app/process/pkgs/meta"
 	"staploy-worker/app/proto"
+	"strings"
+
+	"golang.org/x/sys/unix"
 )
 
 type AppPackageManager struct {
@@ -54,6 +57,15 @@ func (app *AppPackageManager) InstallAppPack() error {
 		for _, version := range appInfo.AvailableVersion {
 			if newVersion.GetVersionName() == version.GetVersionName() {
 				needAppending = false
+				isOnProc, err := app.CheckVersionOnProc()
+				if err != nil {
+					return err
+				}
+
+				if isOnProc {
+					return fmt.Errorf("requested binary \"%s\" (version %s) is used by a running process, overwriting not allowed",
+						appInfo.GetApp().GetAppName(), newVersion.VersionName)
+				}
 			}
 		}
 		appInfoToUpdate = appInfo
@@ -76,12 +88,12 @@ func (app *AppPackageManager) InstallAppPack() error {
 		appInfoToUpdate.App.AppDescription = &app.AppDescription
 	}
 
-	err = app.AppMeta.CommitAppInfoFS(appInfoToUpdate)
+	err = files.ExtractTar(app.ArchivePath, binPath)
 	if err != nil {
 		return err
 	}
 
-	err = files.ExtractTar(app.ArchivePath, binPath)
+	err = app.AppMeta.CommitAppInfoFS(appInfoToUpdate)
 	if err != nil {
 		return err
 	}
@@ -162,6 +174,40 @@ func (app *AppPackageManager) getAppPackPath() (string, error) {
 	return path, nil
 }
 
+func (app *AppPackageManager) CheckVersionOnProc() (bool, error) {
+	versionMeta, err := app.VersionMeta.FetchVersionInfoFS()
+	if err != nil {
+		return false, err
+	}
+
+	for _, executable := range versionMeta.EntryBinaries {
+		executablePath, err := app.getVersionPackFilePath(executable.GetName())
+		if err != nil {
+			return false, err
+		}
+
+		isOnProc, err := IsFileUnderProcess(executablePath)
+		if err != nil {
+			return false, err
+		}
+
+		if isOnProc {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func (app *AppPackageManager) getVersionPackFilePath(filename string) (string, error) {
+	appPackPath, err := app.getAppPackPath()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(appPackPath, strings.TrimSpace(filename)), nil
+}
+
 func getSHA1(filePath string) (string, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -180,4 +226,32 @@ func getSHA1(filePath string) (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("%x", hash.Sum(nil)), nil
+}
+
+func IsFileUnderProcess(filePath string) (bool, error) {
+	var target unix.Stat_t
+	err := unix.Stat(filePath, &target)
+	if err != nil {
+		return false, fmt.Errorf("failed to get stat: %s: %w", filePath, err)
+	}
+
+	processes, err := filepath.Glob("/proc/[0-9]*")
+	if err != nil {
+		return false, err
+	}
+
+	for _, proc := range processes {
+		var exeInfo unix.Stat_t
+		err := unix.Stat(filepath.Join(proc, "exe"), &exeInfo)
+
+		if err != nil {
+			continue
+		}
+
+		if exeInfo.Dev == target.Dev && exeInfo.Ino == target.Ino {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
