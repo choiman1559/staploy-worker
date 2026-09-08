@@ -88,9 +88,40 @@ func (app *AppPackageManager) InstallAppPack() error {
 		appInfoToUpdate.App.AppDescription = &app.AppDescription
 	}
 
-	err = files.ExtractTar(app.ArchivePath, binPath)
-	if err != nil {
-		return err
+	if files.Exists(binPath) {
+		tempBinPath := binPath + ".tmp"
+		if files.Exists(tempBinPath) {
+			err = os.RemoveAll(tempBinPath)
+			if err != nil {
+				return err
+			}
+		}
+
+		defer func() {
+			if files.Exists(tempBinPath) {
+				_ = os.RemoveAll(tempBinPath)
+			}
+		}()
+
+		err = files.ExtractTar(app.ArchivePath, tempBinPath)
+		if err != nil {
+			return err
+		}
+
+		err = os.RemoveAll(binPath)
+		if err != nil {
+			return err
+		}
+
+		err = os.Rename(tempBinPath, binPath)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = files.ExtractTar(app.ArchivePath, binPath)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = app.AppMeta.CommitAppInfoFS(appInfoToUpdate)
