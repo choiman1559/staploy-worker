@@ -132,6 +132,18 @@ func GetWorkerCpuArch() proto.CpuArch {
 		return proto.CpuArch_mipsel
 	case "mips64le":
 		return proto.CpuArch_mips64el
+	case "mips":
+		return proto.CpuArch_mips
+	case "mips64":
+		return proto.CpuArch_mips64
+	case "ppc64":
+		return proto.CpuArch_ppc64
+	case "ppc64le":
+		return proto.CpuArch_ppc64le
+	case "s390x":
+		return proto.CpuArch_s390x
+	case "loong64":
+		return proto.CpuArch_loong64
 	default:
 		return proto.CpuArch_UNKNOWN
 	}
