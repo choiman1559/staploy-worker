@@ -4,16 +4,21 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"reflect"
+	"regexp"
 	"runtime"
 	"staploy-worker/app/consts"
 	"staploy-worker/app/files"
 	"staploy-worker/app/proto"
+	"strings"
 	"sync/atomic"
 
 	"github.com/gofrs/flock"
 	"github.com/google/uuid"
+	gcpu "github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/host"
 	"github.com/shirou/gopsutil/mem"
+	"golang.org/x/sys/cpu"
 )
 
 var atomicWorkerDefaultInfo atomic.Value
@@ -43,6 +48,10 @@ func CreateDefaultWorkerInfo(requireDetail bool) *proto.WorkerInfo {
 				USE_REMOTE_SHELL:       ArgsConfig.RemoteShell,
 				DISABLE_SYMLINK_DIR:    ArgsConfig.DisableSymlinkDir,
 				SKIP_HASH_VERIFICATION: ArgsConfig.SkipHashValidCheck,
+
+				CPU_BIG_ENDIAN:   IsCPUBigEndian(),
+				CPU_CAPABILITIES: GetCpuExtensions(),
+				CPU_FLAGS:        GetCpuFlags(),
 			},
 		}
 		atomicWorkerDefaultInfo.Store(workerInfo)
@@ -112,6 +121,56 @@ func GetTotalMemorySizeInBytes() int64 {
 
 func GetCpuCoreCount() int64 {
 	return int64(runtime.NumCPU())
+}
+
+func GetCpuExtensions() []string {
+	var caps []string
+	var v reflect.Value
+
+	switch runtime.GOARCH {
+	case "386", "amd64":
+		v = reflect.ValueOf(cpu.X86)
+	case "arm64":
+		v = reflect.ValueOf(cpu.ARM64)
+	case "arm":
+		v = reflect.ValueOf(cpu.ARM)
+	case "mips64", "mips64le":
+		v = reflect.ValueOf(cpu.MIPS64X)
+	case "ppc64", "ppc64le":
+		v = reflect.ValueOf(cpu.PPC64)
+	case "s390x":
+		v = reflect.ValueOf(cpu.S390X)
+	case "riscv64":
+		v = reflect.ValueOf(cpu.RISCV64)
+	case "loong64":
+		v = reflect.ValueOf(cpu.Loong64)
+	default:
+		return []string{}
+	}
+
+	prefixRegex := regexp.MustCompile(`^(Has|Is)`)
+
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Type().Field(i)
+		if field.Type.Kind() == reflect.Bool {
+			if v.Field(i).Bool() {
+				cleanName := prefixRegex.ReplaceAllString(field.Name, "")
+				extName := strings.ToLower(cleanName)
+
+				caps = append(caps, extName)
+			}
+		}
+	}
+	return caps
+}
+
+func GetCpuFlags() []string {
+	cpus, _ := gcpu.Info()
+	return cpus[0].Flags
+}
+
+func IsCPUBigEndian() bool {
+	return cpu.IsBigEndian
 }
 
 func GetWorkerCpuArch() proto.CpuArch {

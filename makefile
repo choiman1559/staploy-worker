@@ -32,12 +32,12 @@ proto:
 		$(M_ARGS) \
 		$(PROTO_FILES)
 
-ARCHES := 386 amd64 arm arm64 riscv64 mipsle mips64le
+ARCHES := 386 amd64 arm arm64 riscv64 mipsle mips64le mips mips64 ppc64le s390x
 buildBinaries: $(ARCHES)
 buildPkg: buildBinaries createPkg
 
 $(ARCHES):
-	CGO_ENABLED=0 GOOS=linux GOARCH=$@ go build -ldflags="-s -w -X staploy-worker/app/consts.VERSION=$(APP_VERSION)" -o $(BUILD_OUT_DIR)/$@/staploy staploy-worker
+	CGO_ENABLED=0 GOOS=linux GOMIPS=softfloat GOARCH=$@ go build -ldflags="-s -w -X staploy-worker/app/consts.VERSION=$(APP_VERSION)" -o $(BUILD_OUT_DIR)/$@/staploy staploy-worker
 
 createPkg:
 	$(CLI_TOOL) file -f build_pkg.hcl -v

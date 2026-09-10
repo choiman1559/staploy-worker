@@ -18,6 +18,10 @@ build "alias:staploy-build" {
   riscv64 { path = "out/riscv64" }
   mipsel { path = "out/mipsle" }
   mips64el { path = "out/mips64le" }
+  mips { path = "out/mips" }
+  mips64 { path = "out/mips64" }
+  ppc64le { path = "out/ppc64le" }
+  s390x { path = "out/s390x" }
 }
 
 configure {
